@@ -31,7 +31,18 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-db = firestore.Client(project="capstone-ezfarm", database="ezfarm-db")
+# Set the environment variable for Google Application Credentials
+credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+# Baca file JSON
+if credentials_path and os.path.exists(credentials_path):
+    with open(credentials_path) as f:
+        credentials = json.load(f)
+    print("Credentials loaded successfully:")
+else:
+    print("GOOGLE_APPLICATION_CREDENTIALS environment variable not set or file not found.")
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "be-capstone-ezfarm-ddad185f9c24.json"
+db = firestore.Client(project="be-capstone-ezfarm")
 
 # Enable CORS
 app.add_middleware(
@@ -88,15 +99,6 @@ async def get_all_predictions(current_user: dict = Depends(get_current_user)):
     else:
         return { "error": "No such document!" }
     
-
-
-# Set the environment variable for Google Application Credentials
-credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-
-# Baca file JSON
-with open(credentials_path) as f:
-    credentials = json.load(f)
-
 # Fungsi untuk memuat model dari GCS ke file lokal sementara
 def load_model_from_gcs(gcs_path, local_path):
     fs = gcsfs.GCSFileSystem()
@@ -108,12 +110,12 @@ def load_model_from_gcs(gcs_path, local_path):
     return model
 
 # Path ke model di Google Cloud Storage
-model_path = 'gs://ezfarm-bucket/best_model3.h5'
+model_path = 'gs://ezfarm-buket/best_model3.h5'
 local_model_path = 'app/best_model3.h5'
 
 # Load model from GCS
 model = load_model_from_gcs(model_path, local_model_path)
- 
+# model = load_model(local_model_path)  
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     contents = await file.read()
