@@ -7,10 +7,6 @@ WORKDIR /code
 # add requirements file to image
 COPY requirements.txt /code/
 COPY .env /code/
-COPY capstone-ezfarm-251b993be76d.json /code/capstone-ezfarm-251b993be76d.json
-
-# Set the environment variable
-ENV GOOGLE_APPLICATION_CREDENTIALS="/code/capstone-ezfarm-251b993be76d.json"
 
 # install python libraries
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
