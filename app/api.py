@@ -116,53 +116,120 @@ local_model_path = 'app/best_model3.h5'
 # Load model from GCS
 model = load_model_from_gcs(model_path, local_model_path)
 # model = load_model(local_model_path)  
+# @app.post("/predict/")
+# async def predict(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+#     contents = await file.read()
+#     image = load_img(io.BytesIO(contents), target_size=(224, 224))
+#     image = img_to_array(image)
+#     image = np.expand_dims(image, axis=0)
+#     image /= 255.0
+
+#     # Make Prediction
+#     prediction = model.predict(image)
+#     predicted_class = np.argmax(prediction, axis=1)
+
+#     class_names = ['Bacterial Leaf Blight', 'Healthy', 'Leaf Blast', 'Leaf Brown Spot', 'Leaf Scald']
+    
+#     predicted_label = class_names[predicted_class[0]]
+
+#     # Ambil data penanganan dari Firestore, atau set pesan default jika "Healthy"
+#     if predicted_label == "Healthy":
+#         penanganan_data = ["No treatment needed. Keep up with regular care and monitoring."]
+#         pencegahan_data = [
+#             "Gunakan benih padi yang sehat dan bersertifikat.",
+#             "Lakukan rotasi tanaman dengan tanaman non-inang.",
+#             "Terapkan praktik pemupukan berimbang.",
+#             "Jaga kebersihan lingkungan sawah dari gulma dan sisa tanaman.",
+#             "Pantau tanaman secara teratur untuk mendeteksi gejala penyakit sejak dini."
+#         ]
+#         gejala_data = ["Tanaman tampak sehat, tumbuh subur, dan tidak menunjukkan gejala penyakit."]
+#         deskripsi = "Tanaman padi dalam kondisi sehat, tidak terinfeksi oleh penyakit apapun."
+#     else:
+#         prediction_ref = db.collection("Prediction").document(predicted_label)
+#         docs = prediction_ref.get()
+#         penanganan_data = docs.to_dict().get("Penanganan", []) if docs.exists else []
+#         pencegahan_data = docs.to_dict().get("pencegahan", []) if docs.exists else []
+#         gejala_data = docs.to_dict().get("gejala", []) if docs.exists else []
+#         deskripsi = docs.to_dict().get("deskripsi", []) if docs.exists else ''
+
+#     # Buat hasil dengan detail penanganan
+#     result_with_penanganan = {
+#         "penyakit": predicted_label,
+#         "deskripsi" : deskripsi,
+#         "nama_tanaman": "Padi",
+#         "penanganan": penanganan_data ,
+#         "pencegahan" : pencegahan_data,
+#         "gejala" : gejala_data 
+#     }
+
+#     return JSONResponse(content={'class': predicted_label,'result_with_penanganan': result_with_penanganan})
+
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    contents = await file.read()
-    image = load_img(io.BytesIO(contents), target_size=(224, 224))
-    image = img_to_array(image)
-    image = np.expand_dims(image, axis=0)
-    image /= 255.0
+    try:
+        # Membaca isi file gambar
+        contents = await file.read()
+        image = load_img(io.BytesIO(contents), target_size=(224, 224))
 
-    # Make Prediction
-    prediction = model.predict(image)
-    predicted_class = np.argmax(prediction, axis=1)
+        # Konversi gambar ke array
+        image = img_to_array(image)
+        image = np.expand_dims(image, axis=0)
+        image /= 255.0
 
-    class_names = ['Bacterial Leaf Blight', 'Healthy', 'Leaf Blast', 'Leaf Brown Spot', 'Leaf Scald']
-    
-    predicted_label = class_names[predicted_class[0]]
+        # Lakukan prediksi
+        prediction = model.predict(image)
+        predicted_class = np.argmax(prediction, axis=1)
 
-    # Ambil data penanganan dari Firestore, atau set pesan default jika "Healthy"
-    if predicted_label == "Healthy":
-        penanganan_data = ["No treatment needed. Keep up with regular care and monitoring."]
-        pencegahan_data = [
-            "Gunakan benih padi yang sehat dan bersertifikat.",
-            "Lakukan rotasi tanaman dengan tanaman non-inang.",
-            "Terapkan praktik pemupukan berimbang.",
-            "Jaga kebersihan lingkungan sawah dari gulma dan sisa tanaman.",
-            "Pantau tanaman secara teratur untuk mendeteksi gejala penyakit sejak dini."
-        ]
-        gejala_data = ["Tanaman tampak sehat, tumbuh subur, dan tidak menunjukkan gejala penyakit."]
-        deskripsi = "Tanaman padi dalam kondisi sehat, tidak terinfeksi oleh penyakit apapun."
-    else:
-        prediction_ref = db.collection("Prediction").document(predicted_label)
-        docs = prediction_ref.get()
-        penanganan_data = docs.to_dict().get("Penanganan", []) if docs.exists else []
-        pencegahan_data = docs.to_dict().get("pencegahan", []) if docs.exists else []
-        gejala_data = docs.to_dict().get("gejala", []) if docs.exists else []
-        deskripsi = docs.to_dict().get("deskripsi", []) if docs.exists else ''
+        # Dapatkan nama kelas dari prediksi
+        class_names = ['Bacterial Leaf Blight', 'Healthy', 'Leaf Blast', 'Leaf Brown Spot', 'Leaf Scald']
+        predicted_label = class_names[predicted_class[0]]
 
-    # Buat hasil dengan detail penanganan
-    result_with_penanganan = {
-        "penyakit": predicted_label,
-        "deskripsi" : deskripsi,
-        "nama_tanaman": "Padi",
-        "penanganan": penanganan_data ,
-        "pencegahan" : pencegahan_data,
-        "gejala" : gejala_data 
-    }
+        # Ambil data penanganan dari Firestore
+        if predicted_label == "Healthy":
+            penanganan_data = ["No treatment needed. Keep up with regular care and monitoring."]
+            pencegahan_data = [
+                "Gunakan benih padi yang sehat dan bersertifikat.",
+                "Lakukan rotasi tanaman dengan tanaman non-inang.",
+                "Terapkan praktik pemupukan berimbang.",
+                "Jaga kebersihan lingkungan sawah dari gulma dan sisa tanaman.",
+                "Pantau tanaman secara teratur untuk mendeteksi gejala penyakit sejak dini."
+            ]
+            gejala_data = ["Tanaman tampak sehat, tumbuh subur, dan tidak menunjukkan gejala penyakit."]
+            deskripsi = "Tanaman padi dalam kondisi sehat, tidak terinfeksi oleh penyakit apapun."
+        else:
+            prediction_ref = db.collection("Prediction").document(predicted_label)
+            docs = prediction_ref.get()
 
-    return JSONResponse(content={'class': predicted_label,'result_with_penanganan': result_with_penanganan})
+            if docs.exists:
+                penanganan_data = docs.to_dict().get("Penanganan", [])
+                pencegahan_data = docs.to_dict().get("pencegahan", [])
+                gejala_data = docs.to_dict().get("gejala", [])
+                deskripsi = docs.to_dict().get("deskripsi", [])
+            else:
+                raise ValueError(f"Data penanganan untuk penyakit {predicted_label} tidak ditemukan di Firestore.")
+
+        # Buat hasil dengan detail penanganan
+        result_with_penanganan = {
+            "penyakit": predicted_label,
+            "deskripsi": deskripsi,
+            "nama_tanaman": "Padi",
+            "penanganan": penanganan_data,
+            "pencegahan": pencegahan_data,
+            "gejala": gejala_data
+        }
+
+        return JSONResponse(content={'class': predicted_label, 'result_with_penanganan': result_with_penanganan})
+
+    except Exception as e:
+        # Menangani error generik
+        print(f"Error saat memprediksi: {e}")
+        return JSONResponse(status_code=500, content={"detail": "Terjadi kesalahan internal."})
+
+    except ValueError as e:
+        # Menangani error spesifik (ValueError)
+        print(f"Error Nilai: {e}")
+        return JSONResponse(status_code=400, content={"detail": str(e)})
+
 
 @app.get("/tracking")
 async def get_all_tracking(current_user: dict = Depends(get_current_user)):
